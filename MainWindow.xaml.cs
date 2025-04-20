@@ -1,106 +1,119 @@
-﻿using System.Collections.ObjectModel;
+﻿using System;
+using System.Collections.ObjectModel;
 using System.IO;
-using System.Text;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Interop;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-using System.Drawing; // Для System.Drawing.Icon
+using MetadataAnalyzer.Models;
+using MetadataExtractor;
+using ExifLibrary;
+using System.ComponentModel;
 
-namespace MDToolsV2
+namespace MetadataAnalyzer
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
     public partial class MainWindow : Window
     {
-        
-        private void AddFileToPanel(string filePath)
+        public ObservableCollection<FileMetadata> Files { get; } = new();
+        private FileMetadata _selectedFile;
+
+        public MainWindow()
         {
-            var fileItem = new Border
-            {
-                Background = Brushes.Transparent,
-                Margin = new Thickness(0, 0, 0, 5),
-                Padding = new Thickness(5),
-                CornerRadius = new CornerRadius(3),
-                Tag = filePath
-            };
+            InitializeComponent();
+            DataContext = this;
 
-            // Создаем иконку на основе расширения файла
-            var icon = new Image
-            {
-                Source = new DrawingImage(),
-                Width = 16,
-                Height = 16,
-                Stretch = Stretch.Uniform
-            };
-
-            fileItem.Child = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Children =
-        {
-            icon,
-            new TextBlock
-            {
-                Text = System.IO.Path.GetFileName(filePath),
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                ToolTip = filePath,
-                Margin = new Thickness(5, 0, 0, 0)
-            }
-        }
-            };
-
-            FilesStackPanel.Children.Add(fileItem);
+            FilesList.ItemsSource = Files;
+            FilesList.Drop += FilesList_Drop;
+            FilesList.DragOver += FilesList_DragOver;
+            FilesList.SelectionChanged += FilesList_SelectionChanged;
         }
 
-        private ObservableCollection<string> _droppedFiles = new ObservableCollection<string>();
-        private void Grid_DragEnter(object sender, DragEventArgs e)
+        private void FilesList_DragOver(object sender, DragEventArgs e)
         {
-            // Подсветка при входе файла в область
-            if (e.Data.GetDataPresent(DataFormats.FileDrop))
-                e.Effects = DragDropEffects.Copy;
-            else
-                e.Effects = DragDropEffects.None;
-        }
- 
-        private void Grid_DragOver(object sender, DragEventArgs e)
-        {
-            // Подтверждение, что это файлы (а не текст или что-то еще)
-            e.Handled = true;
+            e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop)
+                ? DragDropEffects.Copy
+                : DragDropEffects.None;
         }
 
-        private void Grid_Drop(object sender, DragEventArgs e)
+        private void FilesList_Drop(object sender, DragEventArgs e)
         {
-            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            if (e.Data.GetData(DataFormats.FileDrop) is string[] files)
             {
-                foreach (string file in (string[])e.Data.GetData(DataFormats.FileDrop))
+                foreach (var file in files)
                 {
-                    if (!FilesStackPanel.Children.OfType<Border>()
-                        .Any(b => b.Tag.ToString().Equals(file, StringComparison.OrdinalIgnoreCase)))
+                    if (File.Exists(file))
                     {
-                        AddFileToPanel(file);
+                        ProcessFile(file);
                     }
                 }
             }
         }
 
-        public MainWindow()
+        private void ProcessFile(string filePath)
         {
-            InitializeComponent();
-            //FilesStackPanel.ItemSourse = _droppedFiles;
+            var fileMetadata = new FileMetadata { FilePath = filePath };
+
+            try
+            {
+                var metadata = ImageMetadataReader.ReadMetadata(filePath);
+
+                if (metadata.Count > 0)
+                {
+                    fileMetadata.HasExif = true;
+                    foreach (var directory in metadata)
+                    {
+                        foreach (var tag in directory.Tags)
+                        {
+                            fileMetadata.Metadata.Add(new MetadataItem
+                            {
+                                Name = tag.Name,
+                                Value = tag.Description
+                            });
+                        }
+                    }
+                }
+
+                Files.Add(fileMetadata);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка обработки файла: {ex.Message}");
+                fileMetadata.HasExif = false;
+                Files.Add(fileMetadata);
+            }
         }
 
-
-        private void MenuItem_Click(object sender, RoutedEventArgs e)
+        private void FilesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            _selectedFile = FilesList.SelectedItem as FileMetadata;
+            MetadataGrid.ItemsSource = _selectedFile?.Metadata;
+        }
 
+        private void Save_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedFile != null)
+            {
+                MessageBox.Show($"Сохранено: {_selectedFile.FileName}");
+            }
+        }
+
+        private void SaveAll_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show($"Сохранено {Files.Count} файлов");
+        }
+
+        private void DeleteSelected_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedFile != null && MetadataGrid.SelectedItem is MetadataItem item)
+            {
+                _selectedFile.Metadata.Remove(item);
+            }
+        }
+
+        private void DeleteAll_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedFile != null)
+            {
+                _selectedFile.Metadata.Clear();
+            }
         }
     }
 }
