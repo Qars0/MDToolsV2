@@ -6,6 +6,7 @@ namespace MetadataAnalyzer.Models
     {
         public string Name { get; set; }
         public string Value { get; set; }
+        public string tagEXIF { get; set; }
     }
 
     public class FileMetadata
@@ -14,6 +15,6 @@ namespace MetadataAnalyzer.Models
         public string FileName => System.IO.Path.GetFileName(FilePath);
         public ObservableCollection<MetadataItem> Metadata { get; set; } = new();
         public bool HasExif { get; set; }
-        public bool IsModified { get; set; } // Флаг изменений
+        public bool IsModified { get; set; }
     }
 }

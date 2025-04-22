@@ -46,6 +46,33 @@ namespace MetadataAnalyzer
                 }
             }
         }
+        private void SaveMetadataToFile(FileMetadata fileMetadata)
+        { 
+            var imageFile = ImageFile.FromFile(fileMetadata.FilePath);
+
+            imageFile.Properties.Clear();
+            foreach (var item in fileMetadata.Metadata)
+            {
+                try
+                {
+                    ExifProperty property;
+                    //ExifTag tag = item.Name;
+                    property.Tag = item.Name;
+                    property.Name = item.Name;
+                    property.Value = item.Value;
+
+                    if (property != null)
+                    {
+                        imageFile.Properties.Add(property);
+                    }
+                }
+                catch
+                {
+                    
+                }
+            }
+            imageFile.Save(fileMetadata.FilePath);
+        }
 
         private void ProcessFile(string filePath)
         {
@@ -54,7 +81,6 @@ namespace MetadataAnalyzer
             try
             {
                 var metadata = ImageMetadataReader.ReadMetadata(filePath);
-
                 if (metadata.Count > 0)
                 {
                     fileMetadata.HasExif = true;
@@ -65,8 +91,11 @@ namespace MetadataAnalyzer
                             fileMetadata.Metadata.Add(new MetadataItem
                             {
                                 Name = tag.Name,
-                                Value = tag.Description
+                                Value = tag.Description,
+                                tagEXIF = tag.TagType.ToString()
+                                
                             });
+                            MessageBox.Show($"Вот такой тег: {tag.TagType}");
                         }
                     }
                 }
@@ -77,7 +106,7 @@ namespace MetadataAnalyzer
             {
                 MessageBox.Show($"Ошибка обработки файла: {ex.Message}");
                 fileMetadata.HasExif = false;
-                Files.Add(fileMetadata);
+                //Files.Add(fileMetadata);
             }
         }
 
