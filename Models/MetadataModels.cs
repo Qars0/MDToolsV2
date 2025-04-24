@@ -1,7 +1,9 @@
-﻿using System.Collections.ObjectModel;
+﻿using ExifLibrary;
+using System.Collections.ObjectModel;
 
-namespace MetadataAnalyzer.Models
+namespace MDTools.Models
 {
+    // Определение класса для использования метаданных в таблице
     public class MetadataItem
     {
         public string Name { get; set; }
@@ -9,6 +11,7 @@ namespace MetadataAnalyzer.Models
         public string tagEXIF { get; set; }
     }
 
+    // Оперделение класса для общего использования метаданных файла
     public class FileMetadata
     {
         public string FilePath { get; set; }
@@ -18,3 +21,11 @@ namespace MetadataAnalyzer.Models
         public bool IsModified { get; set; }
     }
 }
+
+
+
+
+
+
+
+
