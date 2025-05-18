@@ -5,8 +5,11 @@ using System.Windows;
 using System.Windows.Controls;
 using MDTools.Models;
 using MetadataExtractor;
-using ExifLibrary;
+//using ExifLibrary;
 using System.ComponentModel;
+using System.Drawing;
+using System.Drawing.Imaging;
+
 
 
 namespace MDTools
@@ -67,9 +70,54 @@ namespace MDTools
             MetadataGrid.ItemsSource = _selectedFile?.Metadata;
         }
 
-        private void SaveMetadataToFile(FileMetadata fileMetadata)
+        // Сохранение метаданных в файл
+        private int SaveMetadataToFile(FileMetadata fileMetadata)
         {
-            // TODO
+            if (fileMetadata == null || !File.Exists(fileMetadata.FilePath))
+                return 1;
+
+            string tempFilePath = Path.GetTempFileName();
+            try
+            {
+                using (var loadImage = System.Drawing.Image.FromFile(fileMetadata.FilePath))
+
+                    try
+                    {
+                        using (var newImage = new Bitmap(loadImage))
+                        {
+                            PropertyItem propItem = loadImage.PropertyItems[0];
+
+                            string values = "";
+                            foreach (var myMD in fileMetadata.Metadata)
+                            {
+                                if (myMD.Name == "Textual Data")
+                                    continue;
+                                values = values + "\n" + myMD.Name + " - " + myMD.Value;
+                            }
+                            propItem.Id = 0x010E;
+                            propItem.Type = 2;
+                            propItem.Value = System.Text.Encoding.ASCII.GetBytes(values);
+                            propItem.Len = propItem.Value.Length;
+
+                            newImage.SetPropertyItem(propItem);
+                            newImage.Save(tempFilePath);
+                        }
+                    }
+                    catch 
+                    {
+                        return 2;
+                    }
+                File.Delete(fileMetadata.FilePath);
+                File.Move(tempFilePath, fileMetadata.FilePath);
+                return 0;
+            }
+            catch
+            {
+                if (File.Exists(tempFilePath))
+                    File.Delete(tempFilePath);
+                throw;
+            }
+
         }
 
         // Обработка чтения файла
@@ -100,7 +148,7 @@ namespace MDTools
                             {
                                 Name = tag.Name,            // Присваиваем имя 
                                 Value = tag.Description,    // Присваиваем значение
-                                tagEXIF = tag.TagName       // Присваиваем тег
+                                tagEXIF = tag.Type          // Присваиваем тег
                                 
                             });
                         }
@@ -119,20 +167,23 @@ namespace MDTools
         // Обработчик нажатия на кнопку сохранить
         private void Save_Click(object sender, RoutedEventArgs e)
         {
-            // TODO
             if (_selectedFile != null)
             {
+                SaveMetadataToFile(_selectedFile);
                 MessageBox.Show($"Сохранено: {_selectedFile.FileName}");
-                // Сообщение является заглушкой
             }
         }
 
         // Обработчик нажатия на кнопу сохранить все
         private void SaveAll_Click(object sender, RoutedEventArgs e)
         {
-            // TODO
-            MessageBox.Show($"Сохранено {Files.Count} файлов"); 
-            // Сообщение является заглушкой
+            int iter = 0;
+            foreach(var saveFile in Files)
+            {
+                if (SaveMetadataToFile(saveFile) == 0)
+                    iter++;
+            }
+            MessageBox.Show($"Сохранено {iter} файлов из {Files.Count}"); 
         }
 
         // Обработчик нажатия на кнопку удалить выбранное
@@ -166,10 +217,10 @@ namespace MDTools
             if (_selectedFile != null)
             {
                 // Создаем новую строку для хранения метаданных
-                var MDLine = new MetadataItem 
+                var MDLine = new MetadataItem
                 {
                     Name = "MDUserData",
-                    tagEXIF = "37510",
+                    tagEXIF = 37510,
                     Value = ""
                 };
                 // Добавляем ее в выбранный файл

@@ -18,8 +18,8 @@
         </Menu>
 
         <!-- Боковая панель -->
-        <ScrollViewer DockPanel.Dock="Left" Width="250" Background="#f0f0f0">
-            <ListBox x:Name="FilesList" AllowDrop="True">
+        <ScrollViewer DockPanel.Dock="Left" IsEnabled="True" Width="250" Background="#f0f0f0" CanContentScroll="False">
+            <ListBox x:Name="FilesList" AllowDrop="True" ScrollViewer.CanContentScroll="False">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
                         <Border Padding="5" Margin="2" Background="White" BorderBrush="Gray" BorderThickness="1">

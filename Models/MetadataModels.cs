@@ -8,7 +8,7 @@ namespace MDTools.Models
     {
         public string Name { get; set; }
         public string Value { get; set; }
-        public string tagEXIF { get; set; }
+        public int tagEXIF { get; set; }
     }
 
     // Оперделение класса для общего использования метаданных файла
